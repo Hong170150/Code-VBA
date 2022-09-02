@@ -1,0 +1,222 @@
+Sub PSAP_V2()
+
+Dim i As Integer
+Dim arr()
+Dim sht()
+Dim Gar()
+Dim dd()
+Dim produit()
+Dim Branche As String
+Dim Target As String
+Dim shtname As String
+Dim Garantie As String
+Dim p As String
+
+t = Timer
+
+Sheets("Recap").Activate
+Range("G16:K60").ClearContents
+Sheets("DF").Range("D4:AH48").ClearContents
+sht = Range("A16:A60")  'Index de la feuille des triangles de chaque branche
+Gar = Range("B16:B60")  'Index de la feuille le nb de garantie de chaque branche
+dd = Range("C16:C60")   'Index pour identifer les méthodes de calculs utilisés,D/D ou CL
+arr = Range("D16:D60")  'Index de la premiere valeur d'un triangle
+produit = Range("E16:E60")
+ 
+For i = LBound(arr) To UBound(arr)
+    Target = arr(i, 1)
+    shtname = sht(i, 1)
+    Branche = Gar(i, 1)
+    Garantie = "Garantie" & "_" & Branche
+    p = produit(i, 1)
+    
+    If dd(i, 1) = "CL" And Target <> "" Then
+    
+        Call CL(shtname, Target, 6, Garantie, i)
+        
+    ElseIf dd(i, 1) = "D/D" And Target <> "" Then
+        Call dossier(shtname, Branche, p, Target, 8, Garantie, i)
+    End If
+Next i
+MsgBox ("Calculs terminés, cette opération vous a pris" & " " & (Timer - t) & " " & "secondes")
+
+End Sub
+
+
+Sub CL(sheetname As String, Tar As String, n As Integer, Nom_Gar As String, i As Integer)
+With Sheets("Chain_ladder")
+'Calucluer le principal
+    Sheets(sheetname).Range(Tar).Resize(n, n).Copy
+    .Range("D7").PasteSpecial xlPasteValues
+'Calculer le recours
+    Sheets(sheetname).Range(Tar).Offset(0, 9).Resize(n, n).Copy
+    .Range("D27").PasteSpecial xlPasteValues
+'Calculer le frais sur principal
+    Sheets(sheetname).Range(Tar).Offset(0, 18).Resize(n, n).Copy
+    .Range("D47").PasteSpecial xlPasteValues
+'Calculer IBNR
+    Sheets(Nom_Gar).Range(Tar).Resize(n, n).Copy
+    .Range("O7").PasteSpecial xlPasteValues
+'Actualiser les calculs
+    .UsedRange.Columns("D:AE").Calculate
+'Remettre les valeurs obtenues dans les cases correspondents
+    Cells(i + 15, 7) = .Range("D3")
+    Cells(i + 15, 8) = .Range("E3")
+    Cells(i + 15, 9) = .Range("F3")
+    Cells(i + 15, 10) = .Range("G3")
+    Cells(i + 15, 11) = .Range("H3")
+'Récupérer les coef de DF
+    Sheets("DF").Range("C" & i + 3).Resize(1, n) = .Range("D14:I14").Value
+    Sheets("DF").Range("C" & i + 3).Offset(0, 8).Resize(1, n) = .Range("D34:I34").Value
+    Sheets("DF").Range("C" & i + 3).Offset(0, 16).Resize(1, n) = .Range("D54:I54").Value
+    Sheets("DF").Range("C" & i + 3).Offset(0, 24).Resize(1, n) = .Range("O14:T14").Value
+End With
+End Sub
+
+Sub dossier(sheetname As String, Bran As String, prod As String, Tar As String, n As Integer, Nb_Gar As String, i As Integer)
+
+If prod = "PJ" Or prod = "IS" Or prod = "RCC" Or prod = "DDE" Then
+    With Sheets("DD")
+    'le principal
+        Sheets(sheetname).Range(Tar).Resize(n, n).Copy
+        .Range("D7").PasteSpecial xlPasteValues
+    'Le principal dossier par dossier
+        Call Result(Bran, Tar, n)
+    'Calculer le recours
+        Sheets(sheetname).Range(Tar).Offset(0, 9).Resize(n, n).Copy
+        .Range("D31").PasteSpecial xlPasteValues
+    'Le recours dossier par dossier
+        Call Recours(Bran, Tar, n)
+    'Calculer le frais sur principal
+        Sheets(sheetname).Range(Tar).Offset(0, 18).Resize(n, n).Copy
+        .Range("D55").PasteSpecial xlPasteValues
+    'Calculer IBNR
+        Sheets(Nb_Gar).Range(Tar).Resize(n, n).Copy
+        .Range("Q7").PasteSpecial xlPasteValues
+    'Actualiser les calculs
+        .UsedRange.Columns("D:AL").Calculate
+    'Remettre les valeurs obtenues dans les cases correspondents
+        Cells(i + 15, 7) = .Range("D3")
+        Cells(i + 15, 8) = .Range("E3")
+        Cells(i + 15, 9) = .Range("F3")
+        Cells(i + 15, 10) = .Range("G3")
+        Cells(i + 15, 11) = .Range("H3")
+    'Récupérer les coef de DF
+        Sheets("DF").Range("C" & i + 3).Offset(0, 16).Resize(1, n) = .Range("D64:K64").Value
+        Sheets("DF").Range("C" & i + 3).Offset(0, 24).Resize(1, n) = .Range("Q16:X16").Value
+    End With
+Else
+    n = 6
+    With Sheets("CL_Habitation")
+    'Calucluer le principal
+        Sheets(sheetname).Range(Tar).Offset(2, 0).Resize(n, n).Copy
+        .Range("D7").PasteSpecial xlPasteValues
+    'Le principal dossier par dossier
+        Call Result(Bran, Tar, n)
+    'Calculer le recours
+        Sheets(sheetname).Range(Tar).Offset(2, 9).Resize(n, n).Copy
+        .Range("D27").PasteSpecial xlPasteValues
+    'Le recours dossier par dossier
+        Call Recours(Bran, Tar, n)
+    'Calculer le frais sur principal
+        Sheets(sheetname).Range(Tar).Offset(2, 18).Resize(n, n).Copy
+        .Range("D47").PasteSpecial xlPasteValues
+    'Calculer IBNR
+        Sheets(Nb_Gar).Range(Tar).Offset(2, 0).Resize(n, n).Copy
+        .Range("O7").PasteSpecial xlPasteValues
+    'Actualiser les calculs
+        .UsedRange.Columns("D:AF").Calculate
+    'Remettre les valeurs obtenues dans les cases correspondents
+        Cells(i + 15, 7) = .Range("D3") 'Résultat dossier par dossier
+        Cells(i + 15, 8) = .Range("E3") 'Résultat dossier par dossier
+        Cells(i + 15, 9) = .Range("F3")
+        Cells(i + 15, 10) = .Range("G3")
+        Cells(i + 15, 11) = .Range("H3")
+    'Récupérer les coef de DF
+        Sheets("DF").Range("C" & i + 3).Offset(0, 16).Resize(1, n) = .Range("D54:I54").Value
+        Sheets("DF").Range("C" & i + 3).Offset(0, 24).Resize(1, n) = .Range("O14:T14").Value
+    End With
+End If
+End Sub
+
+'Pour calculer les PSAP pour principals par dossier par dossier
+Sub Result(str As String, index As String, n As Integer)
+Dim a, b, c, d, e As Integer
+If n = 8 Then
+    With Sheets("DD")
+        If str = "Habitation" Then
+            For a = 1 To n
+                .Range("M" & a + 6) = Application.Sum(Sheets("CMI_IRD").Range(index).Offset(a - 1, 0).Resize(1, 2))
+            Next a
+        ElseIf str = "Particuliers" Then
+            For b = 1 To n
+                .Range("M" & b + 6) = Application.Sum(Sheets("Charges_cumulées_CMI").Range(index).Offset(b - 1, 0).Resize(1, 2))
+            Next b
+        ElseIf str = "Taxis" Then
+            For c = 1 To n
+                .Range("M" & c + 6) = Application.Sum(Sheets("Charges_cumulées_CMI").Range(index).Offset(c - 1, 5).Resize(1, 2))
+            Next c
+        ElseIf str = "Assu2000" Then
+            For d = 1 To n
+                .Range("M" & d + 6) = Application.Sum(Sheets("Charges_cumulées_CMI").Range(index).Offset(d - 1, 10).Resize(1, 2))
+            Next d
+        End If
+    End With
+ElseIf n = 6 Then
+    With Sheets("CL_Habitation")
+        .Range("K7") = Application.Sum(Sheets("CMI_IRD").Range(index).Resize(3, 2))
+        For e = 2 To n
+            .Range("k" & e + 6) = Application.Sum(Sheets("CMI_IRD").Range(index).Offset(e + 1, 0).Resize(1, 2))
+        Next e
+    End With
+End If
+End Sub
+'Pour calculer les PSAP pour recours par dossier par dossier
+Sub Recours(str As String, index As String, n As Integer)
+Dim a, b, c, d, e As Integer
+If n = 8 Then
+    With Sheets("DD")
+        If str = "Habitation" Then
+            For a = 1 To n
+                .Range("O" & a + 41) = Sheets("CMI_IRD").Range(index).Offset(a - 1, 2)
+            Next a
+        ElseIf str = "Particuliers" Then
+            For b = 1 To n
+                .Range("O" & b + 41) = Sheets("Charges_cumulées_CMI").Range(index).Offset(b - 1, 2)
+            Next b
+        ElseIf str = "Taxis" Then
+            For c = 1 To n
+                .Range("O" & c + 41) = Sheets("Charges_cumulées_CMI").Range(index).Offset(c - 1, 7)
+            Next c
+        ElseIf str = "Assu2000" Then
+            For d = 1 To n
+                .Range("O" & d + 41) = Sheets("Charges_cumulées_CMI").Range(index).Offset(d - 1, 12)
+            Next d
+        End If
+    End With
+ElseIf n = 6 Then
+    With Sheets("CL_Habitation")
+        .Range("M36") = Application.Sum(Sheets("CMI_IRD").Range(index).Offset(0, 2).Resize(3, 1))
+        For e = 2 To n
+            .Range("M" & e + 35) = Sheets("CMI_IRD").Range(index).Offset(e + 1, 2)
+        Next e
+    End With
+End If
+End Sub
+
+
+##########################################################################
+Sub Afficher()
+
+Dim tri()
+
+tri = Array("Triangle_Part", "Triangle_Taxis", "Triangle_Assu2000", "Triangle_Habitation", "Garantie_Particuliers", "Garantie_Taxis", "Garantie_Assu2000", "Garantie_Habitation")
+
+For i = LBound(tri) To UBound(tri)
+        Sheets(tri(i)).Visible = True
+Next i
+
+End Sub
+
+
+
